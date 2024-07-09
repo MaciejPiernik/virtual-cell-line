@@ -15,6 +15,10 @@ st.set_page_config(layout="wide")
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 
+if 'cell_states' not in st.session_state:
+    st.session_state['cell_states'] = None
+
+
 class Autoencoder(nn.Module):
     def __init__(self, layer_dims):
         super(Autoencoder, self).__init__()
@@ -68,20 +72,27 @@ def load_umap():
     return pd.read_csv('data/predicted_umap.csv', index_col=0)
 
 
-filtered_df = load_data()
-predicted_umap = load_umap()
+@st.cache_data
+def load_reducer():
+    with open('models/umap_reducer.pkl', 'rb') as f:
+        reducer = pickle.load(f)
 
-with open('models/umap_reducer.pkl', 'rb') as f:
-    reducer = pickle.load(f)
+    return reducer
+    
 
-model = Autoencoder([filtered_df.shape[1] - 1, 1024])
-model.load_state_dict(torch.load('models/autoencoder_1024.pth'))
+@st.cache_data
+def load_model(layer_dims):
+    model = Autoencoder(layer_dims)
+    model.load_state_dict(torch.load('models/autoencoder_1024.pth'))
+
+    return model
 
 
 def predict_gene_expression(data):
     with torch.no_grad():
         output = model(data)
     return output
+
 
 def run_simulation(test_sample, gene_index, target_value, max_iterations=100, step_frac=0.1):
     perturbed_sample = test_sample.clone()
@@ -128,6 +139,12 @@ def plot_perturbation_path(all_embeddings, cell_states_embedding):
     st.pyplot()
 
 
+filtered_df = load_data()
+predicted_umap = load_umap()
+reducer = load_reducer()
+model = load_model([filtered_df.shape[1] - 1, 1024])
+
+
 # Streamlit app
 st.title("Virtual Cell Line")
 
@@ -146,12 +163,12 @@ query = st.text_input("Write a query to filter cells", 'Inflammation == "Healthy
 selected_cell = filtered_df.query(query).drop('Inflammation', axis=1).sample(1, random_state=23)
 test_sample = torch.tensor(selected_cell.values, dtype=torch.float32)
 
-with st.form():
-    gene_name = st.selectbox("Pick a gene to perturb", filtered_df.columns)
-    gene_index = filtered_df.columns.get_loc(gene_name)
+gene_name = st.selectbox("Pick a gene to perturb", filtered_df.columns)
+gene_index = filtered_df.columns.get_loc(gene_name)
 
+with st.form('perturbation_form'):
     # Display the initial gene expression on a slider for the user to change (make the initial value the same as the selected cell's expression and mark it with a tick)
-    perturbation_columns = st.columns(3)
+    perturbation_columns = st.columns(4)
     with perturbation_columns[0]:
         initial_expression = test_sample[0, gene_index].item()
         st.markdown(f"Initial expression: {initial_expression}")
@@ -159,6 +176,8 @@ with st.form():
         target_value = st.slider("Change gene expression", min_value=filtered_df[gene_name].min(), max_value=filtered_df[gene_name].max(), value=initial_expression, step=0.1)
     with perturbation_columns[2]:
         step_frac = st.slider("Step fraction", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
+    with perturbation_columns[3]:
+        max_iterations = st.slider("Max iterations", min_value=1, max_value=100, value=20, step=1)
 
     is_run = st.form_submit_button("Run Simulation")
 
@@ -166,30 +185,29 @@ plot_columns = st.columns(2)
 
 # Run simulation
 if is_run:
-    cell_states = run_simulation(test_sample, gene_index, target_value, step_frac=step_frac)
+    cell_states = run_simulation(test_sample, gene_index, target_value, step_frac=step_frac, max_iterations=max_iterations)
 
-    # Convert cell states to DataFrame
-    cell_states_df = pd.DataFrame(cell_states.numpy(), columns=filtered_df.columns[:-1])
-    
-    # Convert cell states to DataFrame for plotting
-    cell_states_embedding = reducer.transform(cell_states.numpy())
+    st.session_state['cell_states'] = cell_states
+
+if st.session_state['cell_states'] is not None:
+    cell_states = st.session_state['cell_states']
 
     with plot_columns[0]:
+        # Convert cell states to DataFrame for plotting
+        cell_states_embedding = reducer.transform(cell_states.numpy())
+
         plot_perturbation_path(predicted_umap, cell_states_embedding)
-    
+
     with plot_columns[1]:
+        # Convert cell states to DataFrame
+        cell_states_df = pd.DataFrame(cell_states.numpy(), columns=filtered_df.columns[:-1])
+
         genes_to_inspect = st.multiselect("Select genes to inspect", filtered_df.columns[:-1], default=[gene_name])
 
         # Plot gene expression changes
         gene_expression_fig = px.line(cell_states_df[genes_to_inspect], title='Gene Expression Changes')
         st.plotly_chart(gene_expression_fig)
-
 else:
-    with plot_columns[0]:
-        # Plot UMAP
-        sns.scatterplot(data=predicted_umap, x='UMAP1', y='UMAP2', hue='Inflammation', s=2);
+    fig = sns.scatterplot(data=predicted_umap, x='UMAP1', y='UMAP2', hue='Inflammation', s=2);
 
-        selected_cell_embedding = reducer.transform(selected_cell)
-        plt.scatter(selected_cell_embedding[:, 0], selected_cell_embedding[:, 1], color='red', label='Selected Cell', s=23)
-        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left');
-        st.pyplot()
+    st.plotly_chart(fig)
