@@ -146,23 +146,26 @@ query = st.text_input("Write a query to filter cells", 'Inflammation == "Healthy
 selected_cell = filtered_df.query(query).drop('Inflammation', axis=1).sample(1, random_state=23)
 test_sample = torch.tensor(selected_cell.values, dtype=torch.float32)
 
-gene_name = st.selectbox("Pick a gene to perturb", filtered_df.columns)
-gene_index = filtered_df.columns.get_loc(gene_name)
+with st.form():
+    gene_name = st.selectbox("Pick a gene to perturb", filtered_df.columns)
+    gene_index = filtered_df.columns.get_loc(gene_name)
 
-# Display the initial gene expression on a slider for the user to change (make the initial value the same as the selected cell's expression and mark it with a tick)
-perturbation_columns = st.columns(3)
-with perturbation_columns[0]:
-    initial_expression = test_sample[0, gene_index].item()
-    st.markdown(f"Initial expression: {initial_expression}")
-with perturbation_columns[1]:
-    target_value = st.slider("Change gene expression", min_value=filtered_df[gene_name].min(), max_value=filtered_df[gene_name].max(), value=initial_expression, step=0.1)
-with perturbation_columns[2]:
-    step_frac = st.slider("Step fraction", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
+    # Display the initial gene expression on a slider for the user to change (make the initial value the same as the selected cell's expression and mark it with a tick)
+    perturbation_columns = st.columns(3)
+    with perturbation_columns[0]:
+        initial_expression = test_sample[0, gene_index].item()
+        st.markdown(f"Initial expression: {initial_expression}")
+    with perturbation_columns[1]:
+        target_value = st.slider("Change gene expression", min_value=filtered_df[gene_name].min(), max_value=filtered_df[gene_name].max(), value=initial_expression, step=0.1)
+    with perturbation_columns[2]:
+        step_frac = st.slider("Step fraction", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
+
+    is_run = st.form_submit_button("Run Simulation")
 
 plot_columns = st.columns(2)
 
 # Run simulation
-if st.button("Run Simulation"):
+if is_run:
     cell_states = run_simulation(test_sample, gene_index, target_value, step_frac=step_frac)
 
     # Convert cell states to DataFrame
