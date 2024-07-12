@@ -94,12 +94,26 @@ def predict_gene_expression(data):
     return output
 
 
+def predict_expression(cell):
+    # create a square matrix with the same cell repeated multiple times, mask the diagonal, predict the expression of the diagonal, collapse the diagonal to a vector
+    cell_copy = cell.clone()
+    cell_copy = cell_copy.repeat(cell.shape[1], 1)
+    mask = torch.eye(cell.shape[1]) == 0
+    cell_copy[mask] = 0
+
+    predicted_expression = predict_gene_expression(cell_copy)
+
+    predicted_expression = torch.diag(predicted_expression).reshape(1, -1)
+
+    return predicted_expression   
+
+
 def run_simulation(test_sample, gene_index, target_value, max_iterations=100, step_frac=0.1):
     perturbed_sample = test_sample.clone()
     perturbation_gene_expression = perturbed_sample[0, gene_index]
     step = step_frac * (target_value - perturbed_sample[0, gene_index])
     cell_states = []
-    predicted_expression = predict_gene_expression(perturbed_sample)
+    predicted_expression = predict_expression(perturbed_sample)
     cell_states.append(predicted_expression)
     for i in range(max_iterations):
         perturbation_gene_expression += step
@@ -108,7 +122,7 @@ def run_simulation(test_sample, gene_index, target_value, max_iterations=100, st
 
         predicted_expression[0, gene_index] = perturbation_gene_expression
 
-        predicted_expression = predict_gene_expression(predicted_expression)
+        predicted_expression = predict_expression(predicted_expression)
 
         if step == 0 and torch.allclose(predicted_expression, cell_states[-1], atol=1e-5):
             break
@@ -199,15 +213,20 @@ if st.session_state['cell_states'] is not None:
         plot_perturbation_path(predicted_umap, cell_states_embedding)
 
     with plot_columns[1]:
-        # Convert cell states to DataFrame
-        cell_states_df = pd.DataFrame(cell_states.numpy(), columns=filtered_df.columns[:-1])
+        with st.form('expression_form'):
+            # Convert cell states to DataFrame
+            cell_states_df = pd.DataFrame(cell_states.numpy(), columns=filtered_df.columns[:-1])
 
-        genes_to_inspect = st.multiselect("Select genes to inspect", filtered_df.columns[:-1], default=[gene_name])
+            genes_to_inspect = st.multiselect("Select genes to inspect", filtered_df.columns[:-1], default=[gene_name])
 
-        # Plot gene expression changes
-        gene_expression_fig = px.line(cell_states_df[genes_to_inspect], title='Gene Expression Changes')
-        st.plotly_chart(gene_expression_fig)
-else:
-    fig = sns.scatterplot(data=predicted_umap, x='UMAP1', y='UMAP2', hue='Inflammation', s=2);
+            is_plot = st.form_submit_button("Plot Gene Expression Changes")
 
-    st.plotly_chart(fig)
+        if is_plot:
+            # Plot gene expression changes
+            gene_expression_fig = px.line(cell_states_df[genes_to_inspect], title='Gene Expression Changes')
+
+            st.plotly_chart(gene_expression_fig)
+# else:
+#     fig = sns.scatterplot(data=predicted_umap, x='UMAP1', y='UMAP2', hue='Inflammation', s=2);
+
+#     st.pyplot()
