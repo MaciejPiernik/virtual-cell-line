@@ -7,7 +7,7 @@ The vision of a workflow is as follows:
 3. Predict the gene expression profile of the cell in response to the perturbation.
 
 If the perturbation is introduced gradually, the model should predict the "trajectory" of the cell in the gene expression space.
-THe figure below illustrates this idea.
+The figure below illustrates this idea.
 
 ![trajectory](results/trajectory.png)
 
@@ -32,7 +32,7 @@ The plot below shows the loss of the model on the training and validation sets.
 
 ![loss](results/loss.png)
 
-The final loss on the validation set is 0.14, which is not great, but at least it's better than the baseline model (predicting the mean expression level of each gene), which is 0.32.
+The final loss on the validation set is 0.14, which is not great, but at least it's better than the baseline model (predicting the mean expression level of each gene), which is 0.30.
 
 ## Roadmap
 1. Finish and deploy the app that will allow to play with the model.
