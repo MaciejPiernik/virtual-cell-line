@@ -1,0 +1,11 @@
+# .gcloudignore
+# Exclude everything
+*
+# Except the following:
+!Dockerfile
+!requirements.txt
+!data/
+!models/
+!app.py
+!app_utils.py
+!.streamlit/

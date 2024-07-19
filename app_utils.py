@@ -1,6 +1,5 @@
-import gzip
-import pickle
 import torch
+import umap
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -35,23 +34,8 @@ class Autoencoder(nn.Module):
 
 @st.cache_data
 def load_data():
-    with gzip.open('data/GSE116222_Expression_matrix.txt.gz', 'rt') as f:
-        expr_matrix = pd.read_csv(f, sep='\t', index_col=0)
-
-    expression_data = expr_matrix.T
-
-    labels = expression_data.index.str.split('-').str[1].to_list()
-
-    inflammation_labels = ['UC inflamed' if x.endswith('3') else 'UC non-inflamed' if x.endswith('2') else 'Healthy' for x in labels]
-    inflammation_labels = pd.Series(inflammation_labels, index=expression_data.index, name='Inflammation')
-
-    with open('data/protein_coding_genes.txt', 'r') as f:
-        protein_coding_genes = f.read().splitlines()
-
-    filtered_df = expression_data[[gene for gene in expression_data.columns if gene in protein_coding_genes]]
-
-    # drop columns with zero variance
-    filtered_df = filtered_df.loc[:, filtered_df.var() > 0]
+    filtered_df = pd.read_parquet('data/filtered_expression_data.parquet')
+    inflammation_labels = pd.read_csv('data/inflammation_labels.csv', index_col=0, header=0, names=['Inflammation']).squeeze()
 
     dataset = filtered_df.join(inflammation_labels, how='inner')
 
@@ -59,14 +43,19 @@ def load_data():
 
 
 @st.cache_data
-def load_umap():
+def load_predicted_data():
+    return pd.read_parquet('data/predicted_expression_data.parquet')
+
+
+@st.cache_data
+def load_predicted_umap():
     return pd.read_csv('data/predicted_umap.csv', index_col=0)
 
 
 @st.cache_resource
-def load_reducer():
-    with open('models/umap_reducer.pkl', 'rb') as f:
-        reducer = pickle.load(f)
+def fit_umap(data):
+    reducer = umap.UMAP()
+    reducer = reducer.fit(data)
 
     return reducer
     
@@ -75,6 +64,7 @@ def load_reducer():
 def load_model(layer_dims):
     model = Autoencoder(layer_dims)
     model.load_state_dict(torch.load('models/autoencoder_1024.pth'))
+    model.eval()
 
     return model
 
@@ -104,18 +94,19 @@ def run_simulation(model, test_sample, gene_index, target_value, max_iterations=
     perturbation_gene_expression = perturbed_sample[0, gene_index]
     step = step_frac * (target_value - perturbed_sample[0, gene_index])
     cell_states = []
-    predicted_expression = predict_expression(perturbed_sample, model)
+    predicted_expression = predict_gene_expression(perturbed_sample, model)
     cell_states.append(predicted_expression)
     for i in range(max_iterations):
         perturbation_gene_expression += step
         if np.isclose(perturbation_gene_expression, target_value, atol=1e-5):
             step = 0
+            perturbation_gene_expression = target_value
 
         predicted_expression[0, gene_index] = perturbation_gene_expression
 
-        predicted_expression = predict_expression(predicted_expression, model)
+        predicted_expression = predict_gene_expression(predicted_expression, model)
 
-        if step == 0 and torch.allclose(predicted_expression, cell_states[-1], atol=1e-5):
+        if step == 0 and torch.allclose(predicted_expression, cell_states[-1], rtol=0, atol=0.01):
             break
 
         cell_states.append(predicted_expression)
@@ -142,3 +133,28 @@ def plot_perturbation_path(all_embeddings, cell_states_embedding):
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left');
 
     st.pyplot()
+
+
+def init_session():
+    if 'cell_states' not in st.session_state:
+        st.session_state['cell_states'] = None
+
+    if 'test_sample' not in st.session_state:
+        st.session_state['test_sample'] = None
+
+    if 'gene_name' not in st.session_state:
+        st.session_state['gene_name'] = None
+
+    if 'simulated_gene' not in st.session_state:
+        st.session_state['simulated_gene'] = None
+
+    if 'test_sample_id' not in st.session_state:
+        st.session_state['test_sample_id'] = None
+
+
+def clear_session():
+    st.session_state['cell_states'] = None
+    st.session_state['test_sample'] = None
+    st.session_state['gene_name'] = None
+    st.session_state['simulated_gene'] = None
+    st.session_state['test_sample_id'] = None
