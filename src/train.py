@@ -43,9 +43,12 @@ num_epochs = 1000
 dropout_rate = 0.1
 learning_rate = 0.0001
 masking_value = 0
-batch_size = 32
+batch_size = 128
 min_genes_to_mask = 0.5
 max_genes_to_mask = 0.8
+patience = 10
+patience_counter = 0
+best_loss = float('inf')
 
 # Model
 # model = Autoencoder(layer_dims, dropout_rate)
@@ -88,3 +91,14 @@ for epoch in range(num_epochs):
     # Save the losses
     losses_df = pd.DataFrame({'train_loss': train_losses, 'test_loss': test_losses})
     losses_df.to_csv(f'autoencoder_losses_{run}.csv', index=False)
+
+    # Add early stopping
+    if test_loss < best_loss:
+        best_loss = test_loss
+        patience_counter = 0
+    else:
+        patience_counter += 1
+
+    if patience_counter >= patience:
+        print('Early stopping...')
+        break
