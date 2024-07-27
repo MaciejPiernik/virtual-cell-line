@@ -69,24 +69,24 @@ def load_model(layer_dims):
     return model
 
 
-def predict_gene_expression(data, model):
-    with torch.no_grad():
-        output = model(data)
-    return output
+# def predict_gene_expression(data, model):
+#     with torch.no_grad():
+#         output = model(data)
+#     return output
 
 
-def predict_expression(cell, model):
-    # create a square matrix with the same cell repeated multiple times, mask the diagonal, predict the expression of the diagonal, collapse the diagonal to a vector
-    cell_copy = cell.clone()
-    cell_copy = cell_copy.repeat(cell.shape[1], 1)
-    mask = torch.eye(cell.shape[1]) == 0
-    cell_copy[mask] = 0
+# def predict_expression(cell, model):
+#     # create a square matrix with the same cell repeated multiple times, mask the diagonal, predict the expression of the diagonal, collapse the diagonal to a vector
+#     cell_copy = cell.clone()
+#     cell_copy = cell_copy.repeat(cell.shape[1], 1)
+#     mask = torch.eye(cell.shape[1]) == 0
+#     cell_copy[mask] = 0
 
-    predicted_expression = predict_gene_expression(cell_copy, model)
+#     predicted_expression = predict_gene_expression(cell_copy, model)
 
-    predicted_expression = torch.diag(predicted_expression).reshape(1, -1)
+#     predicted_expression = torch.diag(predicted_expression).reshape(1, -1)
 
-    return predicted_expression   
+#     return predicted_expression   
 
 
 def run_simulation(model, test_sample, gene_index, target_value, max_iterations=100, step_frac=0.1):
@@ -94,17 +94,18 @@ def run_simulation(model, test_sample, gene_index, target_value, max_iterations=
     perturbation_gene_expression = perturbed_sample[0, gene_index]
     step = step_frac * (target_value - perturbed_sample[0, gene_index])
     cell_states = []
-    predicted_expression = predict_gene_expression(perturbed_sample, model)
+    with torch.no_grad():
+        predicted_expression = model(perturbed_sample)
+
     cell_states.append(predicted_expression)
+
     for i in range(max_iterations):
         perturbation_gene_expression += step
         if np.isclose(perturbation_gene_expression, target_value, atol=1e-5):
             step = 0
             perturbation_gene_expression = target_value
 
-        predicted_expression[0, gene_index] = perturbation_gene_expression
-
-        predicted_expression = predict_gene_expression(predicted_expression, model)
+        predicted_expression = model.simulate(predicted_expression, [gene_index], [perturbation_gene_expression])
 
         if step == 0 and torch.allclose(predicted_expression, cell_states[-1], rtol=0, atol=0.01):
             break
