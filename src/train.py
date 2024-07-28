@@ -35,16 +35,16 @@ X_test = torch.tensor(X_test, dtype=torch.float32)
 
 # Hyperparameters
 input_size = X_train.shape[1]
-embedding_dim = 128
+embedding_dim = 256
 num_heads = 8
 num_transformer_layers = 6
 layer_dims = [input_size, embedding_dim]
 num_epochs = 1000
-dropout_rate = 0.1
+dropout_rate = 0
 learning_rate = 0.0001
 masking_value = 0
 batch_size = 128
-min_genes_to_mask = 0.5
+min_genes_to_mask = 0.2
 max_genes_to_mask = 0.8
 patience = 10
 patience_counter = 0
@@ -83,7 +83,7 @@ for epoch in range(num_epochs):
 
     scheduler.step(test_loss)
 
-    print(f'Epoch [{epoch}/{num_epochs}] losses, Train: {train_loss:.4f}, Test: {test_loss:.4f}')
+    print(f'Epoch [{epoch}/{num_epochs}] losses, Train: {train_loss:.6f}, Test: {test_loss:.6f}')
 
     # Save the model after each epoch
     torch.save(model.state_dict(), f'autoencoder_{run}.pth')
@@ -92,7 +92,7 @@ for epoch in range(num_epochs):
     losses_df = pd.DataFrame({'train_loss': train_losses, 'test_loss': test_losses})
     losses_df.to_csv(f'autoencoder_losses_{run}.csv', index=False)
 
-    # Add early stopping
+    # Early stopping
     if test_loss < best_loss:
         best_loss = test_loss
         patience_counter = 0
