@@ -9,7 +9,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 
-from Autoencoder import Autoencoder
 from VirtualCellLine import VirtualCellLine
 from utils import train_epoch, test_epoch
 
@@ -18,41 +17,37 @@ run = datetime.now().strftime('%Y%m%d%H%M%S')
 
 # Load the data
 print('Loading data...')
-data = pd.read_parquet('data/filtered_expression_data.parquet')
+# data = pd.read_parquet('data/filtered_expression_data.parquet')
+data = pd.read_csv('data/toy_gene_expression_dataset.csv')
 
 X_train, X_test = train_test_split(data, test_size=0.2, random_state=23)
 # # DEBUG: Overfit the model on two samples
 # X_train, X_test = data.iloc[:2], data.iloc[:2]
 
-# Standardize the data
-print('Standardizing the data...')
-scaler = MinMaxScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+# # Standardize the data
+# print('Standardizing the data...')
+# scaler = MinMaxScaler()
+# X_train = scaler.fit_transform(X_train)
+# X_test = scaler.transform(X_test)
 
-X_train = torch.tensor(X_train, dtype=torch.float32)
-X_test = torch.tensor(X_test, dtype=torch.float32)
+X_train = torch.tensor(X_train.values, dtype=torch.float32)
+X_test = torch.tensor(X_test.values, dtype=torch.float32)
 
 # Hyperparameters
 input_size = X_train.shape[1]
-embedding_dim = 256
-num_heads = 8
-num_transformer_layers = 6
-layer_dims = [input_size, embedding_dim]
-num_epochs = 1000
-dropout_rate = 0
-learning_rate = 0.0001
+
+num_epochs = 100000
+learning_rate = 0.001
 masking_value = 0
-batch_size = 128
+batch_size = 64
 min_genes_to_mask = 0.2
-max_genes_to_mask = 0.8
-patience = 10
+max_genes_to_mask = 0.5
+patience = 1000
 patience_counter = 0
 best_loss = float('inf')
 
 # Model
-# model = Autoencoder(layer_dims, dropout_rate)
-model = VirtualCellLine(input_size, embedding_dim=embedding_dim, num_heads=num_heads, num_transformer_layers=num_transformer_layers, dropout_rate=dropout_rate)
+model = VirtualCellLine(input_size)
 
 # Loss function, optimizer, and scheduler
 criterion = nn.MSELoss()

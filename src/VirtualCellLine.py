@@ -4,7 +4,7 @@ import torch.nn as nn
 from BaseSimulator import BaseSimulator
 
 class VirtualCellLine(BaseSimulator):
-    def __init__(self, num_genes, embedding_dim=128, num_heads=8, num_transformer_layers=6, dropout_rate=0.1):
+    def __init__(self, num_genes, embedding_dim=64, num_heads=8, num_transformer_layers=6, dropout_rate=0):
         super(VirtualCellLine, self).__init__()
         
         self.num_genes = num_genes
@@ -30,7 +30,7 @@ class VirtualCellLine(BaseSimulator):
         # mask: [batch_size, num_genes] binary mask where 1 indicates masked (unknown) values
         
         if mask is not None:
-            x = x * (1 - mask)  # Apply mask
+            x = x * (1 - mask)
         
         # Embed
         x = self.embedding(x)

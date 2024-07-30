@@ -12,8 +12,8 @@ def train_epoch(min_genes_to_mask, max_genes_to_mask, model, criterion, optimize
         # Forward pass
         output = model(batch, mask)
 
-        # Compute loss only for the selected genes
         loss = criterion(output[mask.bool()], batch[mask.bool()])
+        # loss = criterion(output[batch != 0], batch[batch != 0])
         
         epoch_losses.append(loss.item())
 
@@ -34,6 +34,7 @@ def test_epoch(min_genes_to_mask, max_genes_to_mask, model, criterion, test_load
             output = model(batch, mask)
 
             loss = criterion(output[mask.bool()], batch[mask.bool()])
+            # loss = criterion(output[batch != 0], batch[batch != 0])
 
             losses.append(loss.item())
             
@@ -46,7 +47,11 @@ def create_mask(batch, min_genes_to_mask, max_genes_to_mask):
     mask = torch.zeros_like(batch)
     for i in range(batch.size(0)):
         non_empty_indexes = torch.nonzero(batch[i] != 0).flatten()
-        no_of_genes_to_mask = torch.randint(int(min_genes_to_mask * len(non_empty_indexes)), int(max_genes_to_mask * len(non_empty_indexes)), (1,))
+        if min_genes_to_mask < 1:
+            no_of_genes_to_mask = torch.randint(int(min_genes_to_mask * len(non_empty_indexes)), int(max_genes_to_mask * len(non_empty_indexes))+1, (1,))
+        else:
+            no_of_genes_to_mask = torch.randint(int(min_genes_to_mask), int(max_genes_to_mask)+1, (1,))
+
         selected_genes = non_empty_indexes[torch.randint(len(non_empty_indexes), (no_of_genes_to_mask,))]
 
         mask[i, selected_genes] = 1
