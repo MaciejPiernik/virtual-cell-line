@@ -4,7 +4,7 @@ import torch.nn as nn
 from BaseSimulator import BaseSimulator
 
 class VirtualCellLine(BaseSimulator):
-    def __init__(self, num_genes, embedding_dim=64, num_heads=8, num_transformer_layers=6, dropout_rate=0):
+    def __init__(self, num_genes, embedding_dim=256, num_heads=8, num_transformer_layers=6, dropout_rate=0):
         super(VirtualCellLine, self).__init__()
         
         self.num_genes = num_genes

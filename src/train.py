@@ -17,27 +17,27 @@ run = datetime.now().strftime('%Y%m%d%H%M%S')
 
 # Load the data
 print('Loading data...')
-# data = pd.read_parquet('data/filtered_expression_data.parquet')
-data = pd.read_csv('data/toy_gene_expression_dataset.csv')
+data = pd.read_parquet('data/filtered_expression_data.parquet')
+# data = pd.read_csv('data/toy_gene_expression_dataset.csv')
 
 X_train, X_test = train_test_split(data, test_size=0.2, random_state=23)
 # # DEBUG: Overfit the model on two samples
 # X_train, X_test = data.iloc[:2], data.iloc[:2]
 
-# # Standardize the data
-# print('Standardizing the data...')
-# scaler = MinMaxScaler()
-# X_train = scaler.fit_transform(X_train)
-# X_test = scaler.transform(X_test)
+# Standardize the data
+print('Standardizing the data...')
+scaler = MinMaxScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-X_train = torch.tensor(X_train.values, dtype=torch.float32)
-X_test = torch.tensor(X_test.values, dtype=torch.float32)
+X_train = torch.tensor(X_train, dtype=torch.float32)
+X_test = torch.tensor(X_test, dtype=torch.float32)
 
 # Hyperparameters
 input_size = X_train.shape[1]
 
 num_epochs = 100000
-learning_rate = 0.001
+learning_rate = 0.0001
 masking_value = 0
 batch_size = 64
 min_genes_to_mask = 0.2
@@ -52,7 +52,7 @@ model = VirtualCellLine(input_size)
 # Loss function, optimizer, and scheduler
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=10, verbose=True)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=100)
 
 # Create data loaders
 train_loader = DataLoader(TensorDataset(X_train), batch_size=batch_size, shuffle=True)
@@ -78,7 +78,7 @@ for epoch in range(num_epochs):
 
     scheduler.step(test_loss)
 
-    print(f'Epoch [{epoch}/{num_epochs}] losses, Train: {train_loss:.6f}, Test: {test_loss:.6f}')
+    print(f'Epoch [{epoch}/{num_epochs}] losses, Train: {train_loss:.6f}, Test: {test_loss:.6f}, Lr: {scheduler.get_last_lr()[0]}')
 
     # Save the model after each epoch
     torch.save(model.state_dict(), f'autoencoder_{run}.pth')
