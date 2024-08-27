@@ -1,0 +1,11 @@
+numpy
+pandas
+scipy
+torch
+torchaudio
+torchvision
+tqdm
+biomart
+cellxgene-census
+psutil
+torchdata

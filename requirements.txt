@@ -12,3 +12,4 @@ torchvision==0.17.2
 tqdm==4.66.1
 umap-learn==0.5.5
 fastparquet==2023.10.1
+cellxgene-census==1.15.0

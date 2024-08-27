@@ -7,3 +7,7 @@ models/
 .vscode/
 autoencoder_losses_20240730125549.csv
 autoencoder_20240730125549.pth
+.terraform
+*.tfstate
+*.tfstate.backup
+readme.txt
