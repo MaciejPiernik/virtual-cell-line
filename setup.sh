@@ -18,10 +18,10 @@ python3.11 -m venv vcl-env
 source vcl-env/bin/activate
 
 # Install requirements
-pip install -r /home/maciej_piernik/maciejpiernik/requirements_train.txt
+pip install -r requirements_train.txt
 
 # Create data directory
-mkdir -p /home/maciej_piernik/data
+mkdir -p /data
 
 # Print completion message
 echo "Setup completed successfully!"

@@ -75,7 +75,7 @@ def get_protein_coding_genes():
 
 def train_epoch(min_genes_to_mask, max_genes_to_mask, model, criterion, optimizer, train_loader):
     epoch_losses = []
-    for batch in tqdm(train_loader, total=3362):
+    for batch in train_loader:
         batch = batch[0]
         mask = create_mask(batch, min_genes_to_mask, max_genes_to_mask)
 

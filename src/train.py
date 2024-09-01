@@ -19,6 +19,7 @@ learning_rate = 0.0001
 masking_value = 0
 min_genes_to_mask = 0.2
 max_genes_to_mask = 0.5
+scheduler_patience = 23
 patience = 100
 patience_counter = 0
 best_loss = float('inf')
@@ -33,7 +34,7 @@ model = VirtualCellLine(input_size)
 # Loss function, optimizer, and scheduler
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=100)
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=scheduler_patience)
 
 train_losses = []
 test_losses = []
